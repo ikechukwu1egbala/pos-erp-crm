@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-900: #25160d;
+  --brand-800: #3d220f;
+  --brand-700: #5f3618;
+  --brand-600: #834d1f;
+  --brand-500: #a96b2b;
+  --brand-400: #d18d2d;
+  --brand-300: #f0b85d;
+  --brand-200: #f7d79a;
+  --brand-100: #fdf0d7;
+  --surface: #f7f3ee;
+  --card: #fffdfb;
+  --muted: #6d5748;
+  --line: #e9ddce;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-[#f4efe9] text-slate-800 antialiased;
+  background-image: radial-gradient(circle at top left, rgba(212,164,81,0.18), transparent 32%),
+    linear-gradient(135deg, #f7f3ed 0%, #f3eee8 100%);
+}
+
+* {
+  @apply border-slate-200;
+}
+
+.app-shell {
+  @apply min-h-screen;
+}
+
+.glass-card {
+  @apply rounded-2xl border border-amber-100 bg-white/90 shadow-soft backdrop-blur;
+}
+
+.soft-btn {
+  @apply inline-flex items-center justify-center rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-100;
+}
+
+.primary-btn {
+  @apply inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-300/40 transition hover:brightness-105;
+}
+
+.stat-card {
+  @apply glass-card p-4;
+}
+
+.metric-label {
+  @apply text-xs font-medium uppercase tracking-[0.12em] text-slate-500;
+}
+
+.metric-value {
+  @apply mt-3 text-3xl font-bold tracking-tight text-slate-800;
+}
+
+.table-grid {
+  @apply overflow-hidden rounded-2xl border border-slate-200 bg-white;
+}
+
+.badge {
+  @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold;
+}
+
+.badge-success {
+  @apply badge bg-emerald-100 text-emerald-700;
+}
+
+.badge-warning {
+  @apply badge bg-amber-100 text-amber-700;
+}
+
+.badge-danger {
+  @apply badge bg-rose-100 text-rose-700;
+}
+
+.badge-neutral {
+  @apply badge bg-slate-100 text-slate-700;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(113, 80, 54, 0.3);
+  border-radius: 9999px;
+}
