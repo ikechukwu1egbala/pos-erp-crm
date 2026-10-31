@@ -1,5 +1,9 @@
-import { CreditCard, Package, Search, ShoppingBag, Sparkles, Tag } from 'lucide-react';
-import { products } from '@/lib/data';
+'use client';
+
+import { ArrowRight, CreditCard, Package, Search, ShoppingBag, Sparkles, Tag } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { useCart, useProducts } from '@/lib/store';
+import { applyProductSale } from '@/lib/mock-data';
 
 const quickActions = [
   { label: 'Cash', icon: ShoppingBag },
@@ -9,7 +13,34 @@ const quickActions = [
 ];
 
 export default function PosPage() {
-  const selectedProducts = products.slice(0, 6);
+  const { products, setProducts } = useProducts();
+  const { cart, addItem, updateQuantity, removeItem, clearCart, subtotal, totalItems } = useCart();
+  const [notice, setNotice] = useState('');
+
+  const discount = useMemo(() => (subtotal >= 50000 ? subtotal * 0.05 : subtotal * 0.02), [subtotal]);
+  const total = subtotal - discount;
+
+  const handleCompleteSale = () => {
+    if (cart.length === 0) {
+      setNotice('Cart is empty. Add at least one product before checkout.');
+      return;
+    }
+
+    const stockCheck = cart.some((item) => {
+      const product = products.find((entry) => entry.id === item.id);
+      return (product ? product.stock : 0) < item.quantity;
+    });
+
+    if (stockCheck) {
+      setNotice('One or more items exceeded the available stock. Adjust the cart and try again.');
+      return;
+    }
+
+    const { updatedProducts, total: newTotal } = applyProductSale(products, cart);
+    setProducts(updatedProducts);
+    clearCart();
+    setNotice(`Sale completed. Total collected: ₦${newTotal.toLocaleString()}`);
+  };
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.5fr_0.8fr]">
@@ -31,13 +62,13 @@ export default function PosPage() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {selectedProducts.map((product) => (
+          {products.slice(0, 6).map((product) => (
             <div key={product.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 transition hover:border-brand-200 hover:bg-brand-50/40">
               <div className="flex items-center justify-between">
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-100 text-brand-700">
                   <Package className="h-5 w-5" />
                 </div>
-                {product.stock < 15 ? <span className="badge-warning">Low stock</span> : <span className="badge-success">In stock</span>}
+                {product.stock <= product.minStock ? <span className="badge-warning">Low stock</span> : <span className="badge-success">In stock</span>}
               </div>
               <div className="mt-4">
                 <h3 className="font-semibold text-slate-800">{product.name}</h3>
@@ -48,7 +79,13 @@ export default function PosPage() {
                   <p className="text-lg font-bold text-slate-800">₦{product.price.toLocaleString()}</p>
                   <p className="text-xs text-slate-500">{product.stock} in stock</p>
                 </div>
-                <button className="primary-btn px-3 py-2">Add</button>
+                <button
+                  className="primary-btn px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => product.stock > 0 && addItem(product, 1)}
+                  disabled={product.stock <= 0}
+                >
+                  Add
+                </button>
               </div>
             </div>
           ))}
@@ -59,49 +96,47 @@ export default function PosPage() {
         <div className="flex items-center justify-between">
           <div>
             <p className="metric-label">Current sale</p>
-            <h2 className="mt-2 text-2xl font-bold text-slate-800">Cart 18</h2>
+            <h2 className="mt-2 text-2xl font-bold text-slate-800">Cart</h2>
           </div>
-          <div className="rounded-full bg-brand-100 px-2.5 py-1 text-xs font-bold text-brand-700">3 items</div>
+          <div className="rounded-full bg-brand-100 px-2.5 py-1 text-xs font-bold text-brand-700">{totalItems} items</div>
         </div>
 
         <div className="mt-5 space-y-3">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-semibold text-slate-800">Premium rice</p>
-                <p className="text-xs text-slate-500">Carton • Qty 2</p>
-              </div>
-              <p className="font-bold text-slate-800">₦18,000</p>
+          {cart.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center text-sm text-slate-500">
+              Your cart is empty.
             </div>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-semibold text-slate-800">Milo</p>
-                <p className="text-xs text-slate-500">Box • Qty 3</p>
+          ) : (
+            cart.map((item) => (
+              <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-slate-800">{item.name}</p>
+                    <p className="text-xs text-slate-500">{item.unit} • Qty {item.quantity}</p>
+                  </div>
+                  <p className="font-bold text-slate-800">₦{(item.price * item.quantity).toLocaleString()}</p>
+                </div>
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <button className="soft-btn px-2 py-1" onClick={() => updateQuantity(item.id, item.quantity - 1)}>-</button>
+                    <span className="text-sm font-medium text-slate-700">{item.quantity}</span>
+                    <button className="soft-btn px-2 py-1" onClick={() => updateQuantity(item.id, item.quantity + 1)}>+</button>
+                  </div>
+                  <button className="text-xs font-semibold text-rose-600" onClick={() => removeItem(item.id)}>Remove</button>
+                </div>
               </div>
-              <p className="font-bold text-slate-800">₦12,900</p>
-            </div>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-semibold text-slate-800">Corn flakes</p>
-                <p className="text-xs text-slate-500">Pack • Qty 4</p>
-              </div>
-              <p className="font-bold text-slate-800">₦9,600</p>
-            </div>
-          </div>
+            ))
+          )}
         </div>
 
         <div className="mt-5 space-y-3 rounded-2xl bg-[#f8f1e5] p-4">
           <div className="flex justify-between text-sm text-slate-600">
             <span>Subtotal</span>
-            <span>₦40,500</span>
+            <span>₦{subtotal.toLocaleString()}</span>
           </div>
           <div className="flex justify-between text-sm text-slate-600">
             <span>Discount</span>
-            <span>₦1,250</span>
+            <span>₦{discount.toLocaleString()}</span>
           </div>
           <div className="flex justify-between text-sm text-slate-600">
             <span>Tax</span>
@@ -109,7 +144,7 @@ export default function PosPage() {
           </div>
           <div className="flex justify-between border-t border-dashed border-slate-300 pt-3 text-base font-bold text-slate-800">
             <span>Total</span>
-            <span>₦39,250</span>
+            <span>₦{total.toLocaleString()}</span>
           </div>
         </div>
 
@@ -122,7 +157,13 @@ export default function PosPage() {
           ))}
         </div>
 
-        <button className="primary-btn mt-5 w-full py-3 text-base">
+        {notice ? (
+          <div className="mt-4 rounded-2xl border border-brand-100 bg-brand-50 p-3 text-sm text-brand-700">
+            {notice}
+          </div>
+        ) : null}
+
+        <button className="primary-btn mt-5 w-full py-3 text-base" onClick={handleCompleteSale}>
           <Sparkles className="mr-2 h-4 w-4" />
           Complete sale
         </button>
