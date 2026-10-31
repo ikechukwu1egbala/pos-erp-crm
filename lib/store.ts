@@ -1,117 +1,86 @@
-'use client';
+export type Product = {
+  id: number;
+  name: string;
+  category: string;
+  sku: string;
+  price: number;
+  stock: number;
+  unit: string;
+  minStock: number;
+};
 
-import { useEffect, useMemo, useState } from 'react';
-import { initialProducts, type CartItem, type Product } from './mock-data';
+export type CartItem = {
+  id: number;
+  name: string;
+  category: string;
+  sku: string;
+  price: number;
+  quantity: number;
+  unit: string;
+};
 
-const PRODUCT_KEY = 'ezc-products';
-const CART_KEY = 'ezc-cart';
+export type Customer = {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  segment: string;
+  status: 'Active' | 'Priority' | 'New';
+  value: number;
+};
 
-function readFromStorage<T>(key: string, fallback: T): T {
-  if (typeof window === 'undefined') {
-    return fallback;
-  }
+export type SaleRecord = {
+  id: number;
+  customer: string;
+  total: number;
+  channel: string;
+  status: 'Paid' | 'Pending' | 'Completed';
+  createdAt: string;
+};
 
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
+export const initialProducts: Product[] = [
+  { id: 1, name: 'Premium Rice', category: 'Grains', sku: 'RICE-01', price: 4800, stock: 22, unit: 'Bag', minStock: 10 },
+  { id: 2, name: 'Milo Classic', category: 'Beverages', sku: 'MILO-22', price: 2900, stock: 18, unit: 'Box', minStock: 8 },
+  { id: 3, name: 'Groundnut Oil', category: 'Cooking', sku: 'OIL-17', price: 6200, stock: 9, unit: 'Bottle', minStock: 12 },
+  { id: 4, name: 'Indomie Chicken', category: 'Instant Food', sku: 'IND-42', price: 950, stock: 46, unit: 'Pack', minStock: 20 },
+  { id: 5, name: 'Detergent Pack', category: 'Household', sku: 'DET-11', price: 1450, stock: 12, unit: 'Pack', minStock: 10 },
+  { id: 6, name: 'Tomato Paste', category: 'Cooking', sku: 'TOM-08', price: 1100, stock: 7, unit: 'Tin', minStock: 12 },
+  { id: 7, name: 'Milk Powder', category: 'Groceries', sku: 'MILK-31', price: 3700, stock: 21, unit: 'Pack', minStock: 10 },
+  { id: 8, name: 'Toilet Roll', category: 'Household', sku: 'TOIL-09', price: 750, stock: 58, unit: 'Roll', minStock: 20 }
+];
 
-export function useProducts() {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+export const initialCustomers: Customer[] = [
+  { id: 1, name: 'Ada Okafor', email: 'ada@kolab.ng', phone: '+234 812 345 6789', segment: 'Retail', status: 'Active', value: 420000 },
+  { id: 2, name: 'Musa Ibrahim', email: 'musa@westco.ng', phone: '+234 803 111 9922', segment: 'Wholesale', status: 'Priority', value: 830000 },
+  { id: 3, name: 'Chinyere Idoko', email: 'chinyere@marketplus.ng', phone: '+234 818 765 2201', segment: 'Retail', status: 'New', value: 190000 },
+  { id: 4, name: 'Femi Alalade', email: 'femi@aladesupplies.com', phone: '+234 806 331 2998', segment: 'B2B', status: 'Active', value: 1180000 }
+];
 
-  useEffect(() => {
-    const saved = readFromStorage<Product[]>(PRODUCT_KEY, initialProducts);
-    setProducts(saved);
-  }, []);
+export const initialSales: SaleRecord[] = [
+  { id: 1, customer: 'Ada Okafor', total: 42500, channel: 'Cash', status: 'Paid', createdAt: '2026-10-31T09:13:00.000Z' },
+  { id: 2, customer: 'Musa Ibrahim', total: 28200, channel: 'Transfer', status: 'Pending', createdAt: '2026-10-31T10:02:00.000Z' },
+  { id: 3, customer: 'Bola James', total: 83600, channel: 'Credit', status: 'Completed', createdAt: '2026-10-31T11:40:00.000Z' },
+  { id: 4, customer: 'Chinyere Idoko', total: 18950, channel: 'Card', status: 'Paid', createdAt: '2026-10-31T12:25:00.000Z' }
+];
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(PRODUCT_KEY, JSON.stringify(products));
-    }
-  }, [products]);
+export function applyProductSale(products: Product[], cart: CartItem[]) {
+  const updatedProducts = products.map((product) => {
+    const item = cart.find((cartItem) => cartItem.id === product.id);
+    if (!item) return product;
+    return {
+      ...product,
+      stock: Math.max(0, product.stock - item.quantity)
+    };
+  });
 
-  return { products, setProducts };
-}
-
-export function useCart() {
-  const [cart, setCart] = useState<CartItem[]>([]);
-
-  useEffect(() => {
-    const saved = readFromStorage<CartItem[]>(CART_KEY, []);
-    setCart(saved);
-  }, []);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(CART_KEY, JSON.stringify(cart));
-    }
-  }, [cart]);
-
-  const addItem = (product: Product, quantity = 1) => {
-    setCart((current) => {
-      const existing = current.find((item) => item.id === product.id);
-
-      if (existing) {
-        return current.map((item) =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
-      }
-
-      return [
-        ...current,
-        {
-          id: product.id,
-          name: product.name,
-          category: product.category,
-          sku: product.sku,
-          price: product.price,
-          quantity,
-          unit: product.unit
-        }
-      ];
-    });
-  };
-
-  const updateQuantity = (id: number, quantity: number) => {
-    setCart((current) => {
-      if (quantity <= 0) {
-        return current.filter((item) => item.id !== id);
-      }
-
-      return current.map((item) =>
-        item.id === id ? { ...item, quantity } : item
-      );
-    });
-  };
-
-  const removeItem = (id: number) => {
-    setCart((current) => current.filter((item) => item.id !== id));
-  };
-
-  const clearCart = () => setCart([]);
-
-  const subtotal = useMemo(
-    () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
-    [cart]
-  );
-
-  const totalItems = useMemo(
-    () => cart.reduce((sum, item) => sum + item.quantity, 0),
-    [cart]
-  );
+  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const discount = subtotal >= 50000 ? subtotal * 0.05 : subtotal * 0.02;
+  const total = subtotal - discount;
 
   return {
-    cart,
-    addItem,
-    updateQuantity,
-    removeItem,
-    clearCart,
+    updatedProducts,
     subtotal,
-    totalItems
+    discount,
+    total
   };
 }

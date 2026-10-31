@@ -1,7 +1,53 @@
+'use client';
+
 import { AlertTriangle, ArrowUpDown, PackageCheck, Search, TrendingUp } from 'lucide-react';
-import { products } from '@/lib/data';
+import { useState } from 'react';
+import { type Product } from '@/lib/mock-data';
+import { useProducts } from '@/lib/store';
 
 export default function InventoryPage() {
+  const { products, setProducts } = useProducts();
+  const [form, setForm] = useState({
+    name: '',
+    category: '',
+    sku: '',
+    price: '',
+    stock: '',
+    unit: 'Unit',
+    minStock: '5'
+  });
+
+  const totalValue = products.reduce((sum, product) => sum + product.price * product.stock, 0);
+  const lowStockCount = products.filter((product) => product.stock <= product.minStock).length;
+
+  const handleChange = (field: string, value: string) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleAddProduct = () => {
+    if (!form.name || !form.category || !form.price || !form.stock) {
+      return;
+    }
+
+    const newProduct: Product = {
+      id: Date.now(),
+      name: form.name,
+      category: form.category,
+      sku: form.sku || `SKU-${Date.now()}`,
+      price: Number(form.price),
+      stock: Number(form.stock),
+      unit: form.unit,
+      minStock: Number(form.minStock || 5)
+    };
+
+    setProducts((current) => [newProduct, ...current]);
+    setForm({ name: '', category: '', sku: '', price: '', stock: '', unit: 'Unit', minStock: '5' });
+  };
+
+  const handleDelete = (id: number) => {
+    setProducts((current) => current.filter((product) => product.id !== id));
+  };
+
   return (
     <div className="space-y-6">
       <section className="glass-card p-5">
@@ -20,18 +66,36 @@ export default function InventoryPage() {
         </div>
       </section>
 
+      <section className="glass-card p-5">
+        <div className="mb-4">
+          <p className="metric-label">New product</p>
+          <h2 className="mt-2 text-xl font-bold text-slate-800">Create inventory item</h2>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <input value={form.name} onChange={(e) => handleChange('name', e.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm" placeholder="Product name" />
+          <input value={form.category} onChange={(e) => handleChange('category', e.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm" placeholder="Category" />
+          <input value={form.sku} onChange={(e) => handleChange('sku', e.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm" placeholder="SKU" />
+          <input value={form.price} type="number" onChange={(e) => handleChange('price', e.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm" placeholder="Price" />
+          <input value={form.stock} type="number" onChange={(e) => handleChange('stock', e.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm" placeholder="Stock" />
+          <input value={form.unit} onChange={(e) => handleChange('unit', e.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm" placeholder="Unit" />
+          <input value={form.minStock} type="number" onChange={(e) => handleChange('minStock', e.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm" placeholder="Min stock" />
+          <button className="primary-btn md:col-span-2 xl:col-span-1" onClick={handleAddProduct}>Save product</button>
+        </div>
+      </section>
+
       <section className="grid gap-4 md:grid-cols-3">
         <div className="stat-card">
           <p className="metric-label">Total SKUs</p>
-          <p className="metric-value">2,430</p>
+          <p className="metric-value">{products.length}</p>
         </div>
         <div className="stat-card">
           <p className="metric-label">Low stock</p>
-          <p className="metric-value text-amber-600">146</p>
+          <p className="metric-value text-amber-600">{lowStockCount}</p>
         </div>
         <div className="stat-card">
           <p className="metric-label">Stock value</p>
-          <p className="metric-value text-emerald-600">₦14.8M</p>
+          <p className="metric-value text-emerald-600">₦{totalValue.toLocaleString()}</p>
         </div>
       </section>
 
@@ -56,6 +120,7 @@ export default function InventoryPage() {
                 <th className="px-5 py-4 font-semibold">Stock</th>
                 <th className="px-5 py-4 font-semibold">Price</th>
                 <th className="px-5 py-4 font-semibold">Status</th>
+                <th className="px-5 py-4 font-semibold">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -76,12 +141,15 @@ export default function InventoryPage() {
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-slate-800">{product.stock}</span>
-                      <span className="text-xs text-slate-500">units</span>
+                      <span className="text-xs text-slate-500">{product.unit}</span>
                     </div>
                   </td>
                   <td className="px-5 py-4 font-semibold text-slate-800">₦{product.price.toLocaleString()}</td>
                   <td className="px-5 py-4">
-                    {product.stock < 15 ? <span className="badge-warning">Reorder</span> : <span className="badge-success">Healthy</span>}
+                    {product.stock <= product.minStock ? <span className="badge-warning">Reorder</span> : <span className="badge-success">Healthy</span>}
+                  </td>
+                  <td className="px-5 py-4">
+                    <button className="text-sm font-medium text-rose-600" onClick={() => handleDelete(product.id)}>Delete</button>
                   </td>
                 </tr>
               ))}
@@ -118,9 +186,9 @@ export default function InventoryPage() {
             <AlertTriangle className="h-5 w-5 text-amber-600" />
           </div>
           <div className="mt-4 space-y-3">
-            {['Groundnut oil', 'Tomato paste', 'Beverages'].map((item) => (
-              <div key={item} className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                {item} requires plan review within 48 hours.
+            {products.filter((product) => product.stock <= product.minStock).slice(0, 3).map((item) => (
+              <div key={item.id} className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                {item.name} requires plan review within 48 hours.
               </div>
             ))}
           </div>
